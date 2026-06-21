@@ -1,10 +1,10 @@
 // Ziel: Steuerung eines Landefahrzeugs aus einem Orbit um eine Kugel heraus.
 // Gemachte Vereinfacherungen: ###
 //
-// Kompilieren am besten über WSL oder in Linux direkt
+// Kompilieren am besten über WSL oder in Linux direkt.
 
-#define SCREENSIZE_ROWS 256
-#define SCREENSIZE_COLS 256
+#define SCREENSIZE_ROWS 255
+#define SCREENSIZE_COLS 255
 
 #include <iostream>
 #include <vector>
@@ -37,16 +37,6 @@ int main(void) {
 		}
 	}
 
-	// Textausgabe des Musters
-	//cout << "Helligkeitswerte" << endl;
-	//for (int i = 0; i < SCREENSIZE_ROWS; i++) {
-	//	for (int j = 0; j < SCREENSIZE_COLS; j++) {
-	//		printf("%3d ", pixel_space[i][j]);
-	//	}
-	//	cout << endl;
-	//}
-	//cout << endl;
-
 	// Dither des Musters
 	for (int i = 0; i < SCREENSIZE_ROWS; i++) {
 		for (int j = 0; j < SCREENSIZE_COLS; j++) {
@@ -54,16 +44,23 @@ int main(void) {
 		}
 	}
 
-	// Ausgabe des Musters
-	cout << "Dither" << endl;
-	for (int i = 0; i < SCREENSIZE_ROWS; i++) {
-		for (int j = 0; j < SCREENSIZE_COLS; j++) {
-			if (pixel_space[i][j]) printf("█");
+	// Ausgabe des Musters durch Halbblöcke
+	for (int i = 0; i < (SCREENSIZE_ROWS / 2); i++) {
+		for (int j = 0; j < (SCREENSIZE_COLS); j++) {
+			if (pixel_space[i * 2][j] && pixel_space[(i * 2) + 1][j]) printf("█");
+			else if (pixel_space[i * 2][j]) printf("▀");
+			else if (pixel_space[(i * 2) + 1][j]) printf("▄");
 			else printf(" ");
 		}
 		cout << endl;
 	}
-	cout << endl;
+	if (SCREENSIZE_ROWS % 2) { // ggf. ungerade letzte Zeile
+		for (int j = 0; j < (SCREENSIZE_COLS); j++) {
+			if (pixel_space[SCREENSIZE_ROWS-1][j]) printf("▀");
+			else printf(" ");
+		}
+		cout << endl;
+	}
 
 	return EXIT_SUCCESS;
 }
