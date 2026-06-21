@@ -11,6 +11,10 @@
 #include <stdexcept>
 #include <format>
 #include <math.h>
+#include <chrono>
+#include <thread>
+#include <csignal>
+#include <atomic>
 
 using namespace std;
 
@@ -64,7 +68,10 @@ const uint8_t bayer8[8][8] = { // Die Bayer-Matrix wird für das "ordered-dither
 	{  40, 232,  24, 216,  34, 226,  18, 210 },
 	{ 168, 104, 152,  88, 162,  98, 146,  82 }
 };
-
+atomic<bool> running = true;
+void handle_sigint(int) {
+	running = false;
+}
 
 class Screen {
 	const size_t  rows;
@@ -178,7 +185,7 @@ public:
 						}
 					}
 					Vector3 n = (d * t + v).norm();
-					double brightness = max(Vector3(0, 255, 0).dot(n), 0.0);
+					double brightness = 255*max(Vector3(1, 1, 0).norm().dot(n), 0.0);
 					buffer[i][j] = brightness;
 				}
 			}
@@ -186,19 +193,45 @@ public:
 		return buffer;
 	}
 	Vector3 get_position() { return position; }
+	void set_position(Vector3 new_position) { position = new_position; }
 	Camera(Vector3 position, Basis3 basis, size_t buffer_rows, size_t buffer_cols, double screen_distance)
 		:position(position), basis(basis), buffer_rows(buffer_rows), buffer_cols(buffer_cols), screen_distance(screen_distance) {};
 };
 
 
 int main(void) {
-	Screen screen(SCREENSIZE_ROWS, SCREENSIZE_COLS);
-	Camera camera(Vector3(100.0, 0.0, 0.0), Basis3(Vector3(-1,-1,0).norm(), Vector3(-1, 1, 0).norm(), Vector3(0, 0, 1).norm()), screen.get_rows(), screen.get_cols(), 100.0);
-	Sphere sphere(Vector3(0,-70,-20), 75.0);
+	signal(SIGINT, handle_sigint);
 
-	screen.set_buffer(camera.render_sphere(sphere));
-	screen.dither();
-	screen.print_pixels();
+	const chrono::milliseconds target_period(20);
+	chrono::nanoseconds deltatime;
+	
+	Screen screen(SCREENSIZE_ROWS, SCREENSIZE_COLS);
+	Camera camera(Vector3(160.0, 0.0, 0.0), Basis3(Vector3(-1,0,0).norm(), Vector3(0, 1, 0).norm(), Vector3(0, 0, 1).norm()), screen.get_rows(), screen.get_cols(), 100.0);
+	Sphere sphere(Vector3(0,0,0), 50.0);
+	Vector3 camera_initial_position = camera.get_position();
+	double omega = 0.000000001;
+	
+	cout << "\033[2J\033[?25l"; // Bildschirm leeren, Cursor unsichtbar
+
+	while (running) {
+		chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
+		cout << "\033[H"; // Cursor auf 0,0
+
+		// Schleife beginnt
+		double offset = 100.0 * sin(chrono::steady_clock::now().time_since_epoch().count() * omega);
+		cout << "timedelta: " << deltatime << endl;
+		camera.set_position(camera_initial_position + Vector3(1, 0, 0) * offset);
+		screen.set_buffer(camera.render_sphere(sphere));
+		screen.dither();
+		screen.print_pixels();
+		// Schleife endet
+
+		chrono::steady_clock::time_point end_time = chrono::steady_clock::now();
+		deltatime = end_time - start_time;
+		std::this_thread::sleep_for(target_period - deltatime);
+	}
+
+	cout << "\nBYE!\033[?25h" << endl;; // Bildschirm leeren, Cursor unsichtbar
 
 	return EXIT_SUCCESS;
 }
