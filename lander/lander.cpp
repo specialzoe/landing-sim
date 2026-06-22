@@ -248,7 +248,22 @@ public:
 };
 
 
-int main(void) {
+int main(int argc, char** argv) {
+	for (int i = 1; i < argc; ++i) {
+		if (argv[i][0] == '-') {
+			switch (argv[i][1]) {
+				// Flags können hier gelesen werden
+			default:
+				throw invalid_argument("invalid flag");
+				return EXIT_FAILURE;
+			}
+		}
+		else {
+			throw invalid_argument("invalid argument");
+			return EXIT_FAILURE;
+		}
+	}
+
 	signal(SIGINT, handle_sigint);
 
 	const chrono::milliseconds target_period(20);
@@ -260,18 +275,18 @@ int main(void) {
 	Vector3 camera_initial_position = camera.get_position();
 	double omega = 0.000000001;
 	
+	/*
 	cout << "\033[2J\033[?25l"; // Bildschirm leeren, Cursor unsichtbar
-
 	while (running) {
 		chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
 		cout << "\033[H"; // Cursor auf 0,0
 
 		// Schleife beginnt
 		double offset = 100.0 * sin(chrono::steady_clock::now().time_since_epoch().count() * omega);
-		cout << "timedelta: " << deltatime << endl;
+		cout << "timedelta: " << deltatime << "\t" << endl;
 		camera.set_position(camera_initial_position + Vector3(1, 0, 0) * offset);
 		screen.set_buffer(camera.render_sphere(sphere));
-		screen.dither_bayer(16);
+		screen.dither_bayer(8);
 		screen.print_pixels();
 		// Schleife endet
 
@@ -279,8 +294,8 @@ int main(void) {
 		deltatime = end_time - start_time;
 		std::this_thread::sleep_for(target_period - deltatime);
 	}
-
+	
 	cout << "\nBYE!\033[?25h" << endl;; // Bildschirm leeren, Cursor unsichtbar
-
+	//*/
 	return EXIT_SUCCESS;
 }
