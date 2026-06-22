@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="lander/lander.vcxproj" />
+  <Project Path="lander/lander.vcxproj" Id="265e7981-b693-4763-af88-2e80f55af263" />
 </Solution>
