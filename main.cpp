@@ -3,8 +3,10 @@
 * Kompilieren am besten mit g++ mit -std=c++20 flag.
 */
 
-#define SCREENSIZE_ROWS 200
-#define SCREENSIZE_COLS 256
+#define SCREENSIZE_ROWS 80
+#define SCREENSIZE_COLS 200
+#define PRINT_VALUES 0 //Ausgabetyp
+#define PRINT_PIXELS 1 //Ausgabetyp
 
 #include <iostream>
 #include <vector> // VLA
@@ -56,6 +58,7 @@ struct Basis3 {
 	Vector3 e_x;
 	Vector3 e_y;
 	Vector3 e_z;
+	Vector3 operator*(Vector3 v) {return e_x * v.x + e_y * v.y + e_z * v.z;} // Basis * Vektor gibt den Vektor in der jeweiligen Basis zurück
 	Basis3(Vector3 e_x, Vector3 e_y, Vector3 e_z) : e_x(e_x), e_y(e_y), e_z(e_z) {};
 };
 atomic<bool> running = true;
@@ -200,6 +203,7 @@ class Camera {
 	double screen_distance;
 public:
 	pixel_buffer render_sphere(Sphere sphere) {
+		Vector3 l = Vector3(1, 1, 0).norm(); // Lichtrichtung
 		Vector3 d; // Strahlrichtung
 		Vector3 v = position - sphere.get_position(); // Mittelpunkt Sphäre -> Kamera
 		double r = sphere.get_radius(); // Radius
@@ -210,10 +214,7 @@ public:
 
 		for (size_t i = 0; i < buffer_rows; i++) {
 			for (size_t j = 0; j < buffer_cols; j++) {
-				// Basiswechsel der Bildpunkte in globale Koordinaten
-				d = basis.e_x * screen_distance +
-					basis.e_y * (j + 0.5 - y_offset) +
-					basis.e_z * (i + 0.5 - z_offset);
+				d = basis * Vector3(screen_distance, j + 0.5 - y_offset, i + 0.5 - z_offset); // Basiswechsel der Bildpunkte in globale Koordinaten
 					double diskriminante = (4 * v.dot(d) * v.dot(d)) - (4 * d.dot(d) * ((v.dot(v)) - (r * r)));
 				
 				if (diskriminante < 0.0) buffer[i][j] = 0;
@@ -234,7 +235,7 @@ public:
 						}
 					}
 					Vector3 n = (d * t + v).norm();
-					double brightness = 255*max(Vector3(1, 1, 0).norm().dot(n), 0.0);
+					double brightness = 255*max(l.dot(n), 0.0);
 					buffer[i][j] = brightness;
 				}
 			}
@@ -243,9 +244,24 @@ public:
 	}
 	Vector3 get_position() { return position; }
 	void set_position(Vector3 new_position) { position = new_position; }
+	void move_globally(Vector3 delta_position) {set_position(position + delta_position);}
+	void move_locally(Vector3 delta_position) {set_position(position + basis * delta_position);}
 	Camera(Vector3 position, Basis3 basis, size_t buffer_rows, size_t buffer_cols, double screen_distance)
 		:position(position), basis(basis), buffer_rows(buffer_rows), buffer_cols(buffer_cols), screen_distance(screen_distance) {};
 };
+
+//class Scene {
+//	pixel_buffer pixel_buffer;
+//	vector<Sphere> spheres;
+//	uint8_t output_mode = PRINT_PIXELS;
+//	Camera camera;
+//public:
+//	void add_sphere(Sphere sphere) {spheres.push_back(sphere);}
+//	void render(){
+//		pixel_buffer = camera.render_sphere(spheres[0]);
+//	}
+//	Scene(Camera camera) : camera(camera) {}
+//};
 
 
 int main(int argc, char** argv) {
@@ -263,18 +279,17 @@ int main(int argc, char** argv) {
 			return EXIT_FAILURE;
 		}
 	}
-
 	signal(SIGINT, handle_sigint);
 
 	const chrono::milliseconds target_period(20);
 	chrono::nanoseconds deltatime;
-	
 	Screen screen(SCREENSIZE_ROWS, SCREENSIZE_COLS);
 	Camera camera(Vector3(160.0, 0.0, 0.0), Basis3(Vector3(-1,0,0).norm(), Vector3(0, 1, 0).norm(), Vector3(0, 0, 1).norm()), screen.get_rows(), screen.get_cols(), 100.0);
 	Sphere sphere(Vector3(0,0,0), 50.0);
 	Vector3 camera_initial_position = camera.get_position();
-	double omega = 0.000000001;
+	double omega = 0.000000001; // Kreisfrequenz für testzwecke
 	
+
 	///*
 	cout << "\033[2J\033[?25l"; // Bildschirm leeren, Cursor unsichtbar
 	while (running) {
@@ -294,7 +309,6 @@ int main(int argc, char** argv) {
 		deltatime = end_time - start_time;
 		std::this_thread::sleep_for(target_period - deltatime);
 	}
-	
 	cout << "\nBYE!\033[?25h" << endl;; // Bildschirm leeren, Cursor unsichtbar
 	//*/
 	return EXIT_SUCCESS;
