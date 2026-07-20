@@ -54,13 +54,67 @@ struct Vector3 {
 		return format("Vector3[{}, {}, {}]", x, y, z);
 	};
 };
+struct Matrix3 {
+	double elements[3][3];
+
+	Matrix3() { // Alle Array-Werte auf 0 setzen TODO vereinfachung durch initializer list prüfen
+		for (int i = 0; i<3; i++) {
+			for (int j = 0; j<3; j++) {
+				elements[i][j]=0.0;
+			}
+		}
+	}
+
+	Matrix3(initializer_list<double> initial_values) {
+		auto e = initial_values.begin(); // Erstes Element der Übergebenen Liste
+		for (int i = 0; i<3; i++) {
+			for (int j = 0; j<3; j++) {
+				elements[i][j] = *e++; // Liste iterieren und Werte übernehmen
+			}
+		}
+	}
+
+	Matrix3 operator*(Matrix3 b) {
+		Matrix3 c;
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				for (int k = 0; k < 3; k++) {
+					c.elements[i][j] += elements[i][k] * b.elements[k][j];
+				}
+			}
+		}
+		return c;
+	}
+};
 struct Basis3 {
 	Vector3 e_x;
 	Vector3 e_y;
 	Vector3 e_z;
+
 	Vector3 operator*(Vector3 v) {return e_x * v.x + e_y * v.y + e_z * v.z;} // Basis * Vektor gibt den Vektor in der jeweiligen Basis zurück
+
 	Basis3(Vector3 e_x, Vector3 e_y, Vector3 e_z) : e_x(e_x), e_y(e_y), e_z(e_z) {};
+
+	void operator*(Matrix3 mat) {
+		double res[3][3] = {};
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j<3; j++) {
+				Vector3 basis_row = (i == 0) ? e_x : (i == 1) ? e_y : e_z;
+				for (int k = 0; k < 3; k++) {
+					double basis_element = (k==0) ? basis_row.x : (k==1) ? basis_row.y : basis_row.z;
+					res[i][j] += basis_element * mat.elements[i][j];
+				}
+			}
+		}
+		for (int i = 0; i < 3; i++) {
+			
+			for (int j = 0; j<3; j++) {
+
+			}
+		}
+	}
 };
+
 atomic<bool> running = true;
 void handle_sigint(int) {
 	running = false;
@@ -250,19 +304,6 @@ public:
 		:position(position), basis(basis), buffer_rows(buffer_rows), buffer_cols(buffer_cols), screen_distance(screen_distance) {};
 };
 
-//class Scene {
-//	pixel_buffer pixel_buffer;
-//	vector<Sphere> spheres;
-//	uint8_t output_mode = PRINT_PIXELS;
-//	Camera camera;
-//public:
-//	void add_sphere(Sphere sphere) {spheres.push_back(sphere);}
-//	void render(){
-//		pixel_buffer = camera.render_sphere(spheres[0]);
-//	}
-//	Scene(Camera camera) : camera(camera) {}
-//};
-
 
 int main(int argc, char** argv) {
 	for (int i = 1; i < argc; ++i) {
@@ -281,6 +322,7 @@ int main(int argc, char** argv) {
 	}
 	signal(SIGINT, handle_sigint);
 
+	// Variablen für die Schleife definieren
 	const chrono::milliseconds target_period(20);
 	chrono::nanoseconds deltatime;
 	Screen screen(SCREENSIZE_ROWS, SCREENSIZE_COLS);
@@ -289,8 +331,18 @@ int main(int argc, char** argv) {
 	Vector3 camera_initial_position = camera.get_position();
 	double omega = 0.000000001; // Kreisfrequenz für testzwecke
 	
+	Matrix3 a = {1,2,3,4,5,6,7,8,9};
+	Matrix3 b = {1,4,6,8,10,12.123,14,16,18};
+	Matrix3 c = a*b;
 
-	///*
+	for (int i = 0; i<3; i++) {
+		for (int j = 0; j<3; j++) {
+			cout << " " << c.elements[i][j] << " ";
+		}
+		cout << endl;
+	}
+
+	/*
 	cout << "\033[2J\033[?25l"; // Bildschirm leeren, Cursor unsichtbar
 	while (running) {
 		chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
