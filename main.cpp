@@ -85,7 +85,17 @@ struct Matrix3 {
 		}
 		return c;
 	}
+
+	Vector3 operator*(Vector3 v) {
+		Vector3 res(0,0,0);
+		for (int j = 0; j < 3; j++) {
+			double vector_elemet = (j==0) ? v.x : (j==1) ? v.y : v.z;
+			res = res + Vector3(elements[0][j], elements[1][j], elements[2][j]) * vector_elemet;
+		}
+		return res;
+	}
 };
+/*
 struct Basis3 {
 	Vector3 e_x;
 	Vector3 e_y;
@@ -94,26 +104,8 @@ struct Basis3 {
 	Vector3 operator*(Vector3 v) {return e_x * v.x + e_y * v.y + e_z * v.z;} // Basis * Vektor gibt den Vektor in der jeweiligen Basis zurück
 
 	Basis3(Vector3 e_x, Vector3 e_y, Vector3 e_z) : e_x(e_x), e_y(e_y), e_z(e_z) {};
-
-	void operator*(Matrix3 mat) {
-		double res[3][3] = {};
-		for (int i = 0; i < 3; i++) {
-			for (int j = 0; j<3; j++) {
-				Vector3 basis_row = (i == 0) ? e_x : (i == 1) ? e_y : e_z;
-				for (int k = 0; k < 3; k++) {
-					double basis_element = (k==0) ? basis_row.x : (k==1) ? basis_row.y : basis_row.z;
-					res[i][j] += basis_element * mat.elements[i][j];
-				}
-			}
-		}
-		for (int i = 0; i < 3; i++) {
-			
-			for (int j = 0; j<3; j++) {
-
-			}
-		}
-	}
 };
+*/
 
 atomic<bool> running = true;
 void handle_sigint(int) {
