@@ -55,21 +55,21 @@ struct Vector3 {
 	};
 };
 struct Matrix3 {
-	double elements[3][3];
+	double e[3][3];
 
 	Matrix3() { // Alle Array-Werte auf 0 setzen TODO vereinfachung durch initializer list prüfen
 		for (int i = 0; i<3; i++) {
 			for (int j = 0; j<3; j++) {
-				elements[i][j]=0.0;
+				e[i][j]=0.0;
 			}
 		}
 	}
 
 	Matrix3(initializer_list<double> initial_values) {
-		auto e = initial_values.begin(); // Erstes Element der Übergebenen Liste
+		auto a = initial_values.begin(); // Erstes Element der Übergebenen Liste
 		for (int i = 0; i<3; i++) {
 			for (int j = 0; j<3; j++) {
-				elements[i][j] = *e++; // Liste iterieren und Werte übernehmen
+				e[i][j] = *a++; // Liste iterieren und Werte übernehmen
 			}
 		}
 	}
@@ -79,7 +79,7 @@ struct Matrix3 {
 		for (int i = 0; i < 3; i++) {
 			for (int j = 0; j < 3; j++) {
 				for (int k = 0; k < 3; k++) {
-					c.elements[i][j] += elements[i][k] * b.elements[k][j];
+					c.e[i][j] += e[i][k] * b.e[k][j];
 				}
 			}
 		}
@@ -90,9 +90,44 @@ struct Matrix3 {
 		Vector3 res(0,0,0);
 		for (int j = 0; j < 3; j++) {
 			double vector_elemet = (j==0) ? v.x : (j==1) ? v.y : v.z;
-			res = res + Vector3(elements[0][j], elements[1][j], elements[2][j]) * vector_elemet;
+			res = res + Vector3(e[0][j], e[1][j], e[2][j]) * vector_elemet;
 		}
 		return res;
+	}
+
+	Matrix3 operator*(double s) {
+		Matrix3 res;
+		for (int i = 0; i<3; i++) {
+			for (int j = 0; j<3; j++) {
+				res.e[i][j] = e[i][j] * s;
+			}
+		}
+	}
+
+	Matrix3 inverse(void) {
+		double det = (
+			e[0][0]*e[1][1]*e[2][2] + 
+			e[0][1]*e[1][2]*e[2][0] + 
+			e[0][2]*e[1][0]*e[2][1] -
+			e[0][1]*e[1][0]*e[2][2] -
+			e[0][2]*e[1][1]*e[2][0] -
+			e[0][0]*e[1][2]*e[2][1]
+		);
+		Matrix3(
+			{
+				e[1][1]*e[2][2] - e[1][2]*e[2][1], 
+				e[0][2]*e[2][1] - e[0][1]*e[2][2], 
+				e[0][1]*e[1][2] - e[0][2]*e[1][1],
+
+				e[1][2]*e[2][0] - e[1][0]*e[2][2], 
+				e[0][0]*e[2][2] - e[0][2]*e[2][0], 
+				e[0][2]*e[1][0] - e[0][0]*e[1][2],
+
+				e[1][0]*e[2][1] - e[1][1]*e[2][0], 
+				e[0][1]*e[2][0] - e[0][0]*e[2][1], 
+				e[0][0]*e[1][1] - e[0][1]*e[1][0]
+			}
+		) * (1.0/det);
 	}
 };
 /*
@@ -243,7 +278,7 @@ public:
 
 class Camera {
 	Vector3 position;
-	Basis3 basis; // Normiert
+	Matrix3 basis; // Normiert
 	size_t buffer_rows;
 	size_t buffer_cols;
 	double screen_distance;
@@ -292,7 +327,7 @@ public:
 	void set_position(Vector3 new_position) { position = new_position; }
 	void move_globally(Vector3 delta_position) {set_position(position + delta_position);}
 	void move_locally(Vector3 delta_position) {set_position(position + basis * delta_position);}
-	Camera(Vector3 position, Basis3 basis, size_t buffer_rows, size_t buffer_cols, double screen_distance)
+	Camera(Vector3 position, Matrix3 basis, size_t buffer_rows, size_t buffer_cols, double screen_distance)
 		:position(position), basis(basis), buffer_rows(buffer_rows), buffer_cols(buffer_cols), screen_distance(screen_distance) {};
 };
 
@@ -318,23 +353,13 @@ int main(int argc, char** argv) {
 	const chrono::milliseconds target_period(20);
 	chrono::nanoseconds deltatime;
 	Screen screen(SCREENSIZE_ROWS, SCREENSIZE_COLS);
-	Camera camera(Vector3(160.0, 0.0, 0.0), Basis3(Vector3(-1,0,0).norm(), Vector3(0, 1, 0).norm(), Vector3(0, 0, 1).norm()), screen.get_rows(), screen.get_cols(), 100.0);
+	//Camera camera(Vector3(160.0, 0.0, 0.0), Basis3(Vector3(-1,0,0).norm(), Vector3(0, 1, 0).norm(), Vector3(0, 0, 1).norm()), screen.get_rows(), screen.get_cols(), 100.0);
+	Camera camera(Vector3(160.0, 0.0, 0.0), Matrix3({-1,0,0, 0,1,0, 0,0,1}), screen.get_rows(), screen.get_cols(), 100.0);
 	Sphere sphere(Vector3(0,0,0), 50.0);
 	Vector3 camera_initial_position = camera.get_position();
 	double omega = 0.000000001; // Kreisfrequenz für testzwecke
-	
-	Matrix3 a = {1,2,3,4,5,6,7,8,9};
-	Matrix3 b = {1,4,6,8,10,12.123,14,16,18};
-	Matrix3 c = a*b;
 
-	for (int i = 0; i<3; i++) {
-		for (int j = 0; j<3; j++) {
-			cout << " " << c.elements[i][j] << " ";
-		}
-		cout << endl;
-	}
-
-	/*
+	///*
 	cout << "\033[2J\033[?25l"; // Bildschirm leeren, Cursor unsichtbar
 	while (running) {
 		chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
