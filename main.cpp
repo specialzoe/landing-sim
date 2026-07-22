@@ -1,12 +1,19 @@
 /*
-* Ziel: Steuerung eines Raumfahrzeuges aus einem Orbit um eine Kugel. "Landesimulator".
+* Ziel: Steuerung eines Raumfahrzeuges aus einem Orbit um eine Kugel. "Landesimulator". (wird wohl etwas verfehlt ^-^ leider wenig Zeit :c)
 * Kompilieren am besten mit g++ mit -std=c++20 flag.
+* ----- Keymap -----
+* HJKL -> Translation
+* WS -> Nicken / pitch
+* QE -> Rollen / roll
+* AD -> Gieren / yaw
 */
 
 #define SCREENSIZE_ROWS 80
 #define SCREENSIZE_COLS 200
 #define PRINT_VALUES 0 //Ausgabetyp
 #define PRINT_PIXELS 1 //Ausgabetyp
+#define TRANSLATION_UNIT 100
+#define ROTATION_UNIT 1
 
 #include <iostream>
 #include <vector> // VLA
@@ -17,6 +24,8 @@
 #include <thread> // graceful shutdown
 #include <csignal> // SIGINT abfangen
 #include <atomic>
+#include <sys/select.h> // Eingabe non-blocking
+#include <unistd.h> // Eingabe non-blocking
 
 using namespace std;
 
@@ -135,8 +144,17 @@ struct Matrix3 {
 };
 
 atomic<bool> running = true;
+
 void handle_sigint(int) {
 	running = false;
+}
+
+bool input_available() { // 
+	struct timeval tv = {0, 0}; // timeout für select
+	fd_set fds;
+	FD_ZERO(&fds);
+	FD_SET(STDIN_FILENO, &fds);
+	return select(STDIN_FILENO +1, &fds, NULL, NULL, &tv);
 }
 
 class Screen {
@@ -230,31 +248,31 @@ public:
 		}
 	}
 	void print_pixels() {
-		cout << "-----begin half-block print-----" << endl;
+		//cout << "-----begin half-block print-----" << endl;
 		for (size_t i = 0; i < (rows / 2); i++) {
 			for (size_t j = 0; j < (cols); j++) {
 				if (buffer[i * 2][j] && buffer[(i * 2) + 1][j]) printf("█");
 				else if (buffer[i * 2][j]) printf("▀");
 				else if (buffer[(i * 2) + 1][j]) printf("▄");
 				else printf(" ");
-			} cout << endl;
+			} std::cout << endl;
 		}
 		if (rows % 2) { // ggf. ungerade letzte Zeile
 			for (size_t j = 0; j < (cols); j++) {
 				if (buffer[rows - 1][j]) printf("▀");
 				else printf(" ");
-			} cout << endl;
+			} std::cout << endl;
 		}
-		cout << "-----end half-block print-----" << endl;
+		//cout << "-----end half-block print-----" << endl;
 	}
 	void print_values() {
-		cout << "-----begin value print-----" << endl;
+		//cout << "-----begin value print-----" << endl;
 		for (size_t i = 0; i < rows; i++) {
 			for (size_t j = 0; j < cols; j++) {
 				printf("%3d ", buffer[i][j]);
-			} cout << endl;
+			} std::cout << endl;
 		}
-		cout << "-----end value print-----" << endl;
+		//cout << "-----end value print-----" << endl;
 	}
 	Screen(size_t rows, size_t cols) : rows(rows), cols(cols), buffer(rows, vector<uint8_t>(cols)) {};
 };
@@ -321,6 +339,15 @@ public:
 	void move_locally(Vector3 delta_position) {set_position(position + basis * delta_position);}
 	Camera(Vector3 position, Matrix3 basis, size_t buffer_rows, size_t buffer_cols, double screen_distance)
 		:position(position), basis(basis), buffer_rows(buffer_rows), buffer_cols(buffer_cols), screen_distance(screen_distance) {};
+	void roll(double radians) {
+
+	};
+	void pitch(double radians) {
+
+	};
+	void yaw(double radians){
+
+	};
 };
 
 
@@ -351,7 +378,7 @@ int main(int argc, char** argv) {
 	Vector3 camera_initial_position = camera.get_position();
 	double omega = 0.000000001; // Kreisfrequenz für testzwecke
 
-	/*
+	/* Tests zur einfachen Ausführung
 	Matrix3 a({41,12,3,8,2,6,7,2,10});
 	Matrix3 b = a.inverse();
 	Matrix3 c = a*b;
@@ -379,26 +406,75 @@ int main(int argc, char** argv) {
 	}
 	//*/
 
-	/*
-	cout << "\033[2J\033[?25l"; // Bildschirm leeren, Cursor unsichtbar
+	///* Main loop
+	std::cout << "\033[2J\033[?25l"; // Bildschirm leeren, Cursor unsichtbar
 	while (running) {
 		chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
-		cout << "\033[H"; // Cursor auf 0,0
+		std::cout << "\033[H"; // Cursor auf 0,0
 
-		// Schleife beginnt
+		// ----- Schleife beginnt -----
+
+		// Ggf. Tastatureingabe (durch terminal beschränkung nur eine Taste gleichzeitig)
+		if (input_available()) {
+            string input;
+            getline(std::cin, input);
+			// std::cout << input [0];
+			switch (input[0])
+			{
+			case 'w': // Nicken
+				
+				break;
+			case 's': // Nicken
+				
+				break;
+			case 'a': // Gieren
+				
+				break;
+			case 'd': // Gieren
+				
+				break;
+			case 'q': // Rollen
+				
+				break;
+			case 'e': // Rollen
+				
+				break;
+			case 'h': // Trans. links
+				std::cout << "MIAU!!!!!!!!!!!!!!!!!!!!!!!";
+				camera.move_locally(Vector3(TRANSLATION_UNIT,0,0));
+				break;
+			case 'j': // Trans. unten
+				
+				break;
+			case 'k': // Trans. oben
+				
+				break;
+			case 'l': // Trans. rechts
+				
+				break;
+			
+			default:
+				break;
+			}
+        }
+
+
+		/*
 		double offset = 100.0 * sin(chrono::steady_clock::now().time_since_epoch().count() * omega);
 		// cout << "timedelta: " << deltatime << "\t" << endl;
 		camera.set_position(camera_initial_position + Vector3(1, 0, 0) * offset);
 		screen.set_buffer(camera.render_sphere(sphere));
 		screen.dither_bayer(8);
 		screen.print_pixels();
-		// Schleife endet
+		//*/
+
+		// ----- Schleife endet -----
 
 		chrono::steady_clock::time_point end_time = chrono::steady_clock::now();
 		deltatime = end_time - start_time;
 		std::this_thread::sleep_for(target_period - deltatime);
 	}
-	cout << "\nBYE!^-^\033[?25h" << endl;; // Bildschirm leeren, Cursor unsichtbar
+	std::cout << "\nBYE!^-^\033[?25h" << endl;; // Bildschirm leeren, Cursor unsichtbar
 	//*/
 	return EXIT_SUCCESS;
 }
