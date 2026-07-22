@@ -2,7 +2,7 @@
 * Ziel: Steuerung eines Raumfahrzeuges aus einem Orbit um eine Kugel. "Landesimulator". (wird wohl etwas verfehlt ^-^ leider wenig Zeit :c)
 * Kompilieren am besten mit g++ mit -std=c++20 flag.
 * ----- Keymap -----
-* HJKL -> Translation
+* HJKLIM -> Translation
 * WS -> Nicken / pitch
 * QE -> Rollen / roll
 * AD -> Gieren / yaw
@@ -440,19 +440,24 @@ int main(int argc, char** argv) {
 				
 				break;
 			case 'h': // Trans. links
-				std::cout << "MIAU!!!!!!!!!!!!!!!!!!!!!!!";
-				camera.move_locally(Vector3(TRANSLATION_UNIT,0,0));
+				camera.move_locally(Vector3(0,(-1)*TRANSLATION_UNIT,0));
 				break;
 			case 'j': // Trans. unten
-				
+				camera.move_locally(Vector3(TRANSLATION_UNIT,0,0));
 				break;
 			case 'k': // Trans. oben
-				
+				camera.move_locally(Vector3((-1)*TRANSLATION_UNIT,0,0));
 				break;
 			case 'l': // Trans. rechts
-				
+				camera.move_locally(Vector3(0,TRANSLATION_UNIT,0));
 				break;
-			
+			case 'i': // Trans. vor
+				camera.move_locally(Vector3(0,0,TRANSLATION_UNIT));
+				break;
+			case 'm': // Trans. zurück
+				camera.move_locally(Vector3(0,0,(-1)*TRANSLATION_UNIT));
+				break;
+
 			default:
 				break;
 			}
