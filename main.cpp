@@ -12,7 +12,7 @@
 #define SCREENSIZE_COLS 200
 #define PRINT_VALUES 0 //Ausgabetyp
 #define PRINT_PIXELS 1 //Ausgabetyp
-#define TRANSLATION_UNIT 100
+#define TRANSLATION_UNIT 1
 #define ROTATION_UNIT 1
 
 #include <iostream>
@@ -24,8 +24,9 @@
 #include <thread> // graceful shutdown
 #include <csignal> // SIGINT abfangen
 #include <atomic>
-#include <sys/select.h> // Eingabe non-blocking
+#include <termios.h>
 #include <unistd.h> // Eingabe non-blocking
+#include <fcntl.h>
 
 using namespace std;
 
@@ -149,12 +150,18 @@ void handle_sigint(int) {
 	running = false;
 }
 
-bool input_available() { // 
-	struct timeval tv = {0, 0}; // timeout für select
-	fd_set fds;
-	FD_ZERO(&fds);
-	FD_SET(STDIN_FILENO, &fds);
-	return select(STDIN_FILENO +1, &fds, NULL, NULL, &tv);
+void set_non_blocking(bool enable) {
+    static struct termios oldt, newt;
+    if (enable) {
+        tcgetattr(STDIN_FILENO, &oldt); // Terminalkonfiguration speichern
+        newt = oldt;
+        newt.c_lflag &= ~(ICANON | ECHO); // Buffering und Echo deaktivieren
+        tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+        fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK); // Non-blocking Eingabe
+    } else {
+        tcsetattr(STDIN_FILENO, TCSANOW, &oldt); // Konfiguration widerherstellen
+        fcntl(STDIN_FILENO, F_SETFL, 0); // Wechsel zur blocking Eingabe
+    }
 }
 
 class Screen {
@@ -367,16 +374,15 @@ int main(int argc, char** argv) {
 		}
 	}
 	signal(SIGINT, handle_sigint);
+	set_non_blocking(true);
 
 	// Variablen für die Schleife definieren
 	const chrono::milliseconds target_period(20);
 	chrono::nanoseconds deltatime;
 	Screen screen(SCREENSIZE_ROWS, SCREENSIZE_COLS);
-	//Camera camera(Vector3(160.0, 0.0, 0.0), Basis3(Vector3(-1,0,0).norm(), Vector3(0, 1, 0).norm(), Vector3(0, 0, 1).norm()), screen.get_rows(), screen.get_cols(), 100.0);
 	Camera camera(Vector3(160.0, 0.0, 0.0), Matrix3({-1,0,0, 0,1,0, 0,0,1}), screen.get_rows(), screen.get_cols(), 100.0);
 	Sphere sphere(Vector3(0,0,0), 50.0);
 	Vector3 camera_initial_position = camera.get_position();
-	double omega = 0.000000001; // Kreisfrequenz für testzwecke
 
 	/* Tests zur einfachen Ausführung
 	Matrix3 a({41,12,3,8,2,6,7,2,10});
@@ -415,11 +421,11 @@ int main(int argc, char** argv) {
 		// ----- Schleife beginnt -----
 
 		// Ggf. Tastatureingabe (durch terminal beschränkung nur eine Taste gleichzeitig)
-		if (input_available()) {
-            string input;
-            getline(std::cin, input);
+		char input;
+		if (read(STDIN_FILENO, &input, 1) > 0) {
+            //getline(std::cin, input);
 			// std::cout << input [0];
-			switch (input[0])
+			switch (input)
 			{
 			case 'w': // Nicken herunter
 				
@@ -443,19 +449,19 @@ int main(int argc, char** argv) {
 				camera.move_locally(Vector3(0,(-1)*TRANSLATION_UNIT,0));
 				break;
 			case 'j': // Trans. unten
-				camera.move_locally(Vector3(TRANSLATION_UNIT,0,0));
-				break;
+			camera.move_locally(Vector3(0,0,TRANSLATION_UNIT));
+			break;
 			case 'k': // Trans. oben
-				camera.move_locally(Vector3((-1)*TRANSLATION_UNIT,0,0));
-				break;
+			camera.move_locally(Vector3(0,0,(-1)*TRANSLATION_UNIT));
+			break;
 			case 'l': // Trans. rechts
-				camera.move_locally(Vector3(0,TRANSLATION_UNIT,0));
-				break;
+			camera.move_locally(Vector3(0,TRANSLATION_UNIT,0));
+			break;
 			case 'i': // Trans. vor
-				camera.move_locally(Vector3(0,0,TRANSLATION_UNIT));
-				break;
+			camera.move_locally(Vector3(TRANSLATION_UNIT,0,0));
+			break;
 			case 'm': // Trans. zurück
-				camera.move_locally(Vector3(0,0,(-1)*TRANSLATION_UNIT));
+			camera.move_locally(Vector3((-1)*TRANSLATION_UNIT,0,0));
 				break;
 
 			default:
@@ -463,15 +469,9 @@ int main(int argc, char** argv) {
 			}
         }
 
-
-		/*
-		double offset = 100.0 * sin(chrono::steady_clock::now().time_since_epoch().count() * omega);
-		// cout << "timedelta: " << deltatime << "\t" << endl;
-		camera.set_position(camera_initial_position + Vector3(1, 0, 0) * offset);
 		screen.set_buffer(camera.render_sphere(sphere));
 		screen.dither_bayer(8);
 		screen.print_pixels();
-		//*/
 
 		// ----- Schleife endet -----
 
@@ -480,6 +480,6 @@ int main(int argc, char** argv) {
 		std::this_thread::sleep_for(target_period - deltatime);
 	}
 	std::cout << "\nBYE!^-^\033[?25h" << endl;; // Bildschirm leeren, Cursor unsichtbar
-	//*/
+	set_non_blocking(false);
 	return EXIT_SUCCESS;
 }
