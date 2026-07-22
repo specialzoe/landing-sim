@@ -102,6 +102,7 @@ struct Matrix3 {
 				res.e[i][j] = e[i][j] * s;
 			}
 		}
+		return res;
 	}
 
 	Matrix3 inverse(void) {
@@ -113,7 +114,9 @@ struct Matrix3 {
 			e[0][2]*e[1][1]*e[2][0] -
 			e[0][0]*e[1][2]*e[2][1]
 		);
-		Matrix3(
+		// cout << "det: " << det << endl; // Determinante ausgeben
+		if (det == 0.0) throw runtime_error("Die Matrix ist singulär, bzw. nicht-invertierbar."); // Inverse undefiniert für det = 0;
+		return Matrix3(
 			{
 				e[1][1]*e[2][2] - e[1][2]*e[2][1], 
 				e[0][2]*e[2][1] - e[0][1]*e[2][2], 
@@ -130,17 +133,6 @@ struct Matrix3 {
 		) * (1.0/det);
 	}
 };
-/*
-struct Basis3 {
-	Vector3 e_x;
-	Vector3 e_y;
-	Vector3 e_z;
-
-	Vector3 operator*(Vector3 v) {return e_x * v.x + e_y * v.y + e_z * v.z;} // Basis * Vektor gibt den Vektor in der jeweiligen Basis zurück
-
-	Basis3(Vector3 e_x, Vector3 e_y, Vector3 e_z) : e_x(e_x), e_y(e_y), e_z(e_z) {};
-};
-*/
 
 atomic<bool> running = true;
 void handle_sigint(int) {
@@ -359,7 +351,35 @@ int main(int argc, char** argv) {
 	Vector3 camera_initial_position = camera.get_position();
 	double omega = 0.000000001; // Kreisfrequenz für testzwecke
 
-	///*
+	/*
+	Matrix3 a({41,12,3,8,2,6,7,2,10});
+	Matrix3 b = a.inverse();
+	Matrix3 c = a*b;
+
+	cout << "original ↓" << endl;
+	for (int i = 0; i<3; i++) {
+		for (int j = 0; j<3; j++) {
+			cout << a.e[i][j] << " ";
+		}
+		cout << endl;
+	}
+	cout << "inverse ↓" << endl;
+	for (int i = 0; i<3; i++) {
+		for (int j = 0; j<3; j++) {
+			cout << b.e[i][j] << " ";
+		}
+		cout << endl;
+	}
+	cout << "multiplikation ↓" << endl;
+	for (int i = 0; i<3; i++) {
+		for (int j = 0; j<3; j++) {
+			cout << c.e[i][j] << " ";
+		}
+		cout << endl;
+	}
+	//*/
+
+	/*
 	cout << "\033[2J\033[?25l"; // Bildschirm leeren, Cursor unsichtbar
 	while (running) {
 		chrono::steady_clock::time_point start_time = chrono::steady_clock::now();
@@ -367,7 +387,7 @@ int main(int argc, char** argv) {
 
 		// Schleife beginnt
 		double offset = 100.0 * sin(chrono::steady_clock::now().time_since_epoch().count() * omega);
-		cout << "timedelta: " << deltatime << "\t" << endl;
+		// cout << "timedelta: " << deltatime << "\t" << endl;
 		camera.set_position(camera_initial_position + Vector3(1, 0, 0) * offset);
 		screen.set_buffer(camera.render_sphere(sphere));
 		screen.dither_bayer(8);
@@ -378,7 +398,7 @@ int main(int argc, char** argv) {
 		deltatime = end_time - start_time;
 		std::this_thread::sleep_for(target_period - deltatime);
 	}
-	cout << "\nBYE!\033[?25h" << endl;; // Bildschirm leeren, Cursor unsichtbar
+	cout << "\nBYE!^-^\033[?25h" << endl;; // Bildschirm leeren, Cursor unsichtbar
 	//*/
 	return EXIT_SUCCESS;
 }
