@@ -421,22 +421,22 @@ int main(int argc, char** argv) {
 			// std::cout << input [0];
 			switch (input[0])
 			{
-			case 'w': // Nicken
+			case 'w': // Nicken herunter
 				
 				break;
-			case 's': // Nicken
+			case 's': // Nicken hoch
 				
 				break;
-			case 'a': // Gieren
+			case 'a': // Gieren links
 				
 				break;
-			case 'd': // Gieren
+			case 'd': // Gieren rechts
 				
 				break;
-			case 'q': // Rollen
+			case 'q': // Rollen CCW
 				
 				break;
-			case 'e': // Rollen
+			case 'e': // Rollen CW
 				
 				break;
 			case 'h': // Trans. links
