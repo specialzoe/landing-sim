@@ -13,7 +13,7 @@
 #define PRINT_VALUES 0 //Ausgabetyp
 #define PRINT_PIXELS 1 //Ausgabetyp
 #define TRANSLATION_UNIT 1
-#define ROTATION_UNIT 1
+#define ROTATION_UNIT 0.01
 
 #include <iostream>
 #include <vector> // VLA
@@ -295,7 +295,7 @@ public:
 
 class Camera {
 	Vector3 position;
-	Matrix3 basis; // Normiert
+	Matrix3 basis; // Normiert/ Orthonormal (wichtige Eigenschaft für Rotationsmatrizen)
 	size_t buffer_rows;
 	size_t buffer_cols;
 	double screen_distance;
@@ -341,19 +341,35 @@ public:
 		return buffer;
 	}
 	Vector3 get_position() { return position; }
+	Matrix3 get_basis() { return basis; }
 	void set_position(Vector3 new_position) { position = new_position; }
 	void move_globally(Vector3 delta_position) {set_position(position + delta_position);}
 	void move_locally(Vector3 delta_position) {set_position(position + basis * delta_position);}
 	Camera(Vector3 position, Matrix3 basis, size_t buffer_rows, size_t buffer_cols, double screen_distance)
 		:position(position), basis(basis), buffer_rows(buffer_rows), buffer_cols(buffer_cols), screen_distance(screen_distance) {};
 	void roll(double radians) {
-
+		Matrix3 r_local({
+			1,	0,	0,
+			0,	cos(radians),	-sin(radians),
+			0,	sin(radians),	cos(radians)
+		});
+		basis = basis*r_local;
 	};
 	void pitch(double radians) {
-
+		Matrix3 r_local({
+			cos(radians),	0,	sin(radians),
+			0,	1,	0,
+			-sin(radians),	0,	cos(radians)
+		});
+		basis = basis*r_local;
 	};
 	void yaw(double radians){
-
+		Matrix3 r_local({
+			cos(radians),	-sin(radians),	0,
+			sin(radians),	cos(radians),	0,
+			0,	0,	1
+		});
+		basis = basis*r_local;
 	};
 };
 
@@ -382,7 +398,6 @@ int main(int argc, char** argv) {
 	Screen screen(SCREENSIZE_ROWS, SCREENSIZE_COLS);
 	Camera camera(Vector3(160.0, 0.0, 0.0), Matrix3({-1,0,0, 0,1,0, 0,0,1}), screen.get_rows(), screen.get_cols(), 100.0);
 	Sphere sphere(Vector3(0,0,0), 50.0);
-	Vector3 camera_initial_position = camera.get_position();
 
 	/* Tests zur einfachen Ausführung
 	Matrix3 a({41,12,3,8,2,6,7,2,10});
@@ -428,42 +443,41 @@ int main(int argc, char** argv) {
 			switch (input)
 			{
 			case 'w': // Nicken herunter
-				
+				camera.pitch(-ROTATION_UNIT);
 				break;
 			case 's': // Nicken hoch
-				
+				camera.pitch(ROTATION_UNIT);
 				break;
 			case 'a': // Gieren links
-				
+				camera.yaw(-ROTATION_UNIT);
 				break;
 			case 'd': // Gieren rechts
-				
+				camera.yaw(ROTATION_UNIT);
 				break;
 			case 'q': // Rollen CCW
-				
+				camera.roll(-ROTATION_UNIT);
 				break;
 			case 'e': // Rollen CW
-				
+				camera.roll(ROTATION_UNIT);
 				break;
 			case 'h': // Trans. links
 				camera.move_locally(Vector3(0,(-1)*TRANSLATION_UNIT,0));
 				break;
 			case 'j': // Trans. unten
-			camera.move_locally(Vector3(0,0,TRANSLATION_UNIT));
-			break;
-			case 'k': // Trans. oben
-			camera.move_locally(Vector3(0,0,(-1)*TRANSLATION_UNIT));
-			break;
-			case 'l': // Trans. rechts
-			camera.move_locally(Vector3(0,TRANSLATION_UNIT,0));
-			break;
-			case 'i': // Trans. vor
-			camera.move_locally(Vector3(TRANSLATION_UNIT,0,0));
-			break;
-			case 'm': // Trans. zurück
-			camera.move_locally(Vector3((-1)*TRANSLATION_UNIT,0,0));
+				camera.move_locally(Vector3(0,0,TRANSLATION_UNIT));
 				break;
-
+			case 'k': // Trans. oben
+				camera.move_locally(Vector3(0,0,(-1)*TRANSLATION_UNIT));
+				break;
+			case 'l': // Trans. rechts
+				camera.move_locally(Vector3(0,TRANSLATION_UNIT,0));
+				break;
+			case 'i': // Trans. vor
+				camera.move_locally(Vector3(TRANSLATION_UNIT,0,0));
+				break;
+			case 'm': // Trans. zurück
+				camera.move_locally(Vector3((-1)*TRANSLATION_UNIT,0,0));
+				break;
 			default:
 				break;
 			}
@@ -472,6 +486,16 @@ int main(int argc, char** argv) {
 		screen.set_buffer(camera.render_sphere(sphere));
 		screen.dither_bayer(8);
 		screen.print_pixels();
+
+		///* Basis der Kamera ausgeben
+		Matrix3 camera_basis = camera.get_basis();
+		for (int i = 0; i<3; i++) {
+			for (int j = 0; j<3; j++) {
+				cout << camera_basis.e[i][j] << " | ";
+			}
+			cout << "#####" << endl;
+		}
+		//*/
 
 		// ----- Schleife endet -----
 
